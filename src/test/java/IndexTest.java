@@ -30,8 +30,8 @@ class IndexTest {
     @Test
     void indexTest() {
         Index index = new Index();
-        index.createIndex(new File("C:\\Users\\MasterYoda117\\Downloads\\test\\声音定位基础\\testsub"));
-        ArrayList<String> words = new ArrayList<>(Arrays.asList("十分", "考究", "practical"));
+        index.createIndex(new File("C:\\Users"));
+        ArrayList<String> words = new ArrayList<>(Arrays.asList("封杀", "算法", "practical"));
 
         ArrayList<String> paths = index.getFileRange(words);
         System.out.println(paths);

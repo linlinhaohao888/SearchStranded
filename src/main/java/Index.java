@@ -13,6 +13,7 @@ public class Index {
     private final static String prefix = ".\\res\\";
     private final static String pathStopWords = ".\\res\\stopWords.txt";
     private final static String fileModifiedPath = ".\\res\\fileModified";
+    private final static String indexNamesPath = ".\\res\\indexNames";
 
     List<String> stopWords;
     JiebaSegmenter segmenter;
@@ -22,6 +23,7 @@ public class Index {
     // hash map of word -> (file path -> occurrences in the file)
     HashMap<String, HashMap<String, Integer>> wordFilesMap;
     HashMap<String, Long> fileModifiedMap;
+    HashMap<String, String> indexFileNameMap;
     String curIndex;
 
     /**
@@ -32,12 +34,25 @@ public class Index {
         segmenter = new JiebaSegmenter();
         wordFilesMap = new HashMap<>();
         fileModifiedMap = new HashMap<>();
+        indexFileNameMap = new HashMap<>();
 
         // initialize stop words
         try {
             File file = new File(pathStopWords);
             stopWords = FileUtils.readLines(file, Charset.defaultCharset());
-        } catch (IOException e) {
+
+            File fileModified = new File(fileModifiedPath);
+            if (fileModified.exists()) {
+                FileInputStream fileInputStream = new FileInputStream(fileModifiedPath);
+                fileModifiedMap = (HashMap<String, Long>) deserialize(fileInputStream.readAllBytes());
+            }
+
+            File indexNames = new File(indexNamesPath);
+            if (indexNames.exists()) {
+                FileInputStream fileInputStream = new FileInputStream(indexNamesPath);
+                indexFileNameMap = (HashMap<String, String>) deserialize(fileInputStream.readAllBytes());
+            }
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
@@ -53,25 +68,38 @@ public class Index {
         File indexFile = hasIndex(file.getPath());
         if (indexFile != null) {
             wordFilesMap = loadIndex(indexFile);
+            updateIndexes(new ArrayList<>(Collections.singletonList(curIndex)));
+            writeMapToFile(getIndexFileName(file.getPath()), file.getPath());
             return;
         }
 
         if (file.isDirectory())
-            skipPaths = addExistingIndexToParent(file.listFiles());
-
-
+            skipPaths = loadExistingIndexToParent(indexFileNameMap.values().toArray(new String[0]), file.getPath());
+        updateIndexes(skipPaths);
 
         ArrayList<File> files = new ArrayList<>(Collections.singletonList(file));
         createIndexes(files.toArray(new File[0]));
         curIndex = file.getPath();
-        writeMapToFile(getIndexFileName(file.getPath()));
+        writeMapToFile(getIndexFileName(file.getPath()), file.getPath());
     }
 
     private void updateIndexes(ArrayList<String> paths) {
         for (String filePath : paths) {
             File file = new File(filePath);
-            if (fileModifiedMap.get(filePath) != file.lastModified()) {
-
+            if (file.isDirectory()) {
+                File[] children = file.listFiles();
+                ArrayList<String> fileNames = new ArrayList<>();
+                assert children != null;
+                for (File child : children) {
+                    fileNames.add(child.getPath());
+                }
+                updateIndexes(fileNames);
+            } else if (fileModifiedMap.get(filePath) != file.lastModified()) {
+                for (Map.Entry<String, HashMap<String, Integer>> fileCntMap : wordFilesMap.entrySet()) {
+                    fileCntMap.getValue().remove(filePath);
+                }
+                indexingFile(file);
+                fileModifiedMap.put(filePath, file.lastModified());
             }
         }
     }
@@ -138,18 +166,19 @@ public class Index {
         return prefix + DigestUtils.md5Hex(path);
     }
 
-    private ArrayList<String> addExistingIndexToParent(File[] children) {
+    private ArrayList<String> loadExistingIndexToParent(String[] indexes, String parentPath) {
         ArrayList<String> paths = new ArrayList<>();
-        if (children == null)
+        if (indexes == null)
             return paths;
-        for (File child : children) {
-            File indexFile = new File(getIndexFileName(child.getPath()));
-            if (indexFile.exists()) {
-                paths.add(child.getPath());
-                HashMap<String, HashMap<String, Integer>> index = loadIndex(indexFile);
-                if (index == null)
+        for (String indexPath : indexes) {
+            File index = new File(indexPath);
+            File indexFile = new File(getIndexFileName(indexPath));
+            if (indexPath.startsWith(parentPath)) {
+                paths.add(index.getPath());
+                HashMap<String, HashMap<String, Integer>> wordIndex = loadIndex(indexFile);
+                if (wordIndex == null)
                     return paths;
-                for (Map.Entry<String, HashMap<String, Integer>> entry : index.entrySet()) {
+                for (Map.Entry<String, HashMap<String, Integer>> entry : wordIndex.entrySet()) {
                     String word = entry.getKey();
                     HashMap<String, Integer> fileCntMap = entry.getValue();
                     if (!wordFilesMap.containsKey(word)) {
@@ -165,8 +194,6 @@ public class Index {
                         }
                     }
                 }
-            } else if (child.isDirectory()) {
-                paths.addAll(addExistingIndexToParent(child.listFiles()));
             }
         }
 
@@ -189,6 +216,7 @@ public class Index {
                 System.out.println("Indexing " + file.getPath());
                 createIndexes(file.listFiles());
             } else {
+                System.out.println("Indexing " + file.getPath());
                 fileModifiedMap.put(file.getPath(), file.lastModified());
                 indexingFile(file);
             }
@@ -213,12 +241,19 @@ public class Index {
     /**
      * serialize the hash maps (i.e., indexes) to files
      */
-    private void writeMapToFile(String path) {
+    private void writeMapToFile(String path, String origin) {
         try {
-            File fileWordFiles = new File(path);
-
-            FileOutputStream fileOutputStream = new FileOutputStream(fileWordFiles);
+            FileOutputStream fileOutputStream = new FileOutputStream(path);
             fileOutputStream.write(serialize(wordFilesMap));
+            fileOutputStream.close();
+
+            indexFileNameMap.put(path, origin);
+            fileOutputStream = new FileOutputStream(indexNamesPath);
+            fileOutputStream.write(serialize(indexFileNameMap));
+            fileOutputStream.close();
+
+            fileOutputStream = new FileOutputStream(fileModifiedPath);
+            fileOutputStream.write(serialize(fileModifiedMap));
             fileOutputStream.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -232,6 +267,7 @@ public class Index {
      */
     private void indexingFile(File file) {
         String filePath = file.getPath();
+
         try {
             String content = tika.parseToString(file) + " " + file.getName();
             content = content.toLowerCase();
