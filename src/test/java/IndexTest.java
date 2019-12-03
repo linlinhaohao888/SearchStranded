@@ -1,13 +1,12 @@
 import com.huaban.analysis.jieba.JiebaSegmenter;
 import org.apache.commons.io.FileUtils;
+import org.checkerframework.checker.units.qual.A;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 class IndexTest {
     @Test
@@ -26,5 +25,29 @@ class IndexTest {
         List<String> words = FileUtils.readLines(file, Charset.defaultCharset());
 
         System.out.println(words);
+    }
+
+    @Test
+    void indexTest() {
+        Index index = new Index(false);
+        ArrayList<String> words = new ArrayList<>(Arrays.asList("Flare", "viewport", "practical"));
+
+        ArrayList<String> paths = index.getFileRange(words);
+        System.out.println(paths);
+    }
+
+    @Test
+    void sortTest() {
+        String test = "Hello";
+        test = test.toLowerCase();
+        System.out.println(test);
+        ArrayList<String> result = new ArrayList<>(Arrays.asList("a", "b", "c"));
+        ArrayList<Integer> evaluation = new ArrayList<>(Arrays.asList(3,1,2));
+        result.sort(Comparator.comparingInt(path -> {
+            int index = result.indexOf(path);
+            return evaluation.get(index);
+        }));
+
+        System.out.println(result);
     }
 }
