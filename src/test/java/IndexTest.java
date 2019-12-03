@@ -29,8 +29,9 @@ class IndexTest {
 
     @Test
     void indexTest() {
-        Index index = new Index(false);
-        ArrayList<String> words = new ArrayList<>(Arrays.asList("Flare", "viewport", "practical"));
+        Index index = new Index();
+        index.createIndex(new File("C:\\Users\\MasterYoda117\\Downloads\\test\\声音定位基础\\testsub"));
+        ArrayList<String> words = new ArrayList<>(Arrays.asList("十分", "考究", "practical"));
 
         ArrayList<String> paths = index.getFileRange(words);
         System.out.println(paths);
@@ -49,5 +50,14 @@ class IndexTest {
         }));
 
         System.out.println(result);
+    }
+
+    @Test
+    void utilTest() {
+        File file = new File("C://");
+        String parent = file.getParent();
+        if (new File("./res/hi").exists()) {
+            System.out.println("Exists");
+        }
     }
 }
