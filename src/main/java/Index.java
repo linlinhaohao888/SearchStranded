@@ -129,6 +129,10 @@ public class Index {
         return result;
     }
 
+    /**
+     * update indexes of the files within the paths
+     * @param paths target paths
+     */
     private void updateIndexes(ArrayList<String> paths) {
         for (String filePath : paths) {
             File file = new File(filePath);
@@ -150,6 +154,11 @@ public class Index {
         }
     }
 
+    /**
+     * load existing target index
+     * @param file target index
+     * @return loaded index
+     */
     private HashMap<String, HashMap<String, Integer>> loadIndex(File file) {
         // load the indexes into memory as hash map
         try {
@@ -166,10 +175,21 @@ public class Index {
         return null;
     }
 
+    /**
+     * forming an index file name from a path
+     * @param path file path
+     * @return formed index file name
+     */
     private String getIndexFileName(String path) {
         return prefix + DigestUtils.md5Hex(path);
     }
 
+    /**
+     * when indexing a folder, load existing child folders/files' indexes to avoid redundant indexing
+     * @param indexes existing indexes
+     * @param parentPath parent folder
+     * @return all children that have been loaded
+     */
     private ArrayList<String> loadExistingIndexToParent(String[] indexes, String parentPath) {
         ArrayList<String> paths = new ArrayList<>();
         if (indexes == null)
@@ -232,6 +252,11 @@ public class Index {
         }
     }
 
+    /**
+     * whether parent folders have been indexed
+     * @param path current index
+     * @return parent folders that have been indexed, null if no such folder exists
+     */
     private File hasIndex(String path) {
         while (path != null) {
             File file = new File(path);

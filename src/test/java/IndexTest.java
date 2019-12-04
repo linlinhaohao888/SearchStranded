@@ -31,7 +31,7 @@ class IndexTest {
     void indexTest() {
         Index index = new Index();
         try {
-            index.createIndex(new File("C:\\Users\\linli\\Downloads\\test"));
+            index.createIndex(new File("C:\\Users\\linli\\Downloads\\test\\声音定位基础"));
         } catch (Exception e) {
             System.out.println(e.getMessage());
             return;
