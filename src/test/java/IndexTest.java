@@ -30,7 +30,12 @@ class IndexTest {
     @Test
     void indexTest() {
         Index index = new Index();
-        index.createIndex(new File("C:\\Users"));
+        try {
+            index.createIndex(new File("C:\\Users\\linli\\Downloads\\test"));
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return;
+        }
         ArrayList<String> words = new ArrayList<>(Arrays.asList("封杀", "算法", "practical"));
 
         ArrayList<String> paths = index.getFileRange(words);
