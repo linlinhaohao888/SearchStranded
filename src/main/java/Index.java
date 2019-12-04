@@ -45,13 +45,17 @@ public class Index {
             File fileModified = new File(fileModifiedPath);
             if (fileModified.exists()) {
                 FileInputStream fileInputStream = new FileInputStream(fileModifiedPath);
-                fileModifiedMap = (HashMap<String, Long>) deserialize(fileInputStream.readAllBytes());
+                byte[] content = new byte[fileInputStream.available()];
+                int read = fileInputStream.read(content);
+                fileModifiedMap = (HashMap<String, Long>) deserialize(content);
             }
 
             File indexNames = new File(indexNamesPath);
             if (indexNames.exists()) {
                 FileInputStream fileInputStream = new FileInputStream(indexNamesPath);
-                indexFileNameMap = (HashMap<String, String>) deserialize(fileInputStream.readAllBytes());
+                byte[] content = new byte[fileInputStream.available()];
+                int read = fileInputStream.read(content);
+                indexFileNameMap = (HashMap<String, String>) deserialize(content);
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
@@ -163,8 +167,10 @@ public class Index {
         // load the indexes into memory as hash map
         try {
             FileInputStream fileInputStream = new FileInputStream(file);
+            byte[] content = new byte[fileInputStream.available()];
+            int read = fileInputStream.read(content);
             HashMap<String, HashMap<String, Integer>> designatedWordFilesMap =
-                    (HashMap<String, HashMap<String, Integer>>) deserialize(fileInputStream.readAllBytes());
+                    (HashMap<String, HashMap<String, Integer>>) deserialize(content);
             fileInputStream.close();
 
             return designatedWordFilesMap;
