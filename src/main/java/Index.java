@@ -10,10 +10,10 @@ import org.apache.tika.exception.TikaException;
 
 public class Index {
     // resource file paths
-    private final static String prefix = ".\\res\\";
-    private final static String pathStopWords = ".\\res\\stopWords.txt";
-    private final static String fileModifiedPath = ".\\res\\fileModified";
-    private final static String indexNamesPath = ".\\res\\indexNames";
+    private final static String prefix = "./res/";
+    private final static String pathStopWords = "./res/stopWords.txt";
+    private final static String fileModifiedPath = "./res/fileModified";
+    private final static String indexNamesPath = "./res/indexNames";
 
     List<String> stopWords;
     JiebaSegmenter segmenter;
