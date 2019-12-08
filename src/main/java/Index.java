@@ -1,5 +1,6 @@
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.*;
 import java.util.*;
 
 import com.huaban.analysis.jieba.JiebaSegmenter;
@@ -22,7 +23,7 @@ public class Index {
 
     // hash map of word -> (file path -> occurrences in the file)
     HashMap<String, HashMap<String, Integer>> wordFilesMap;
-    HashMap<String, Long> fileModifiedMap;
+    HashMap<String, HashMap<String, Long>> fileModifiedMap;
     HashMap<String, String> indexFileNameMap;
     String curIndex;
     String targetIndex;
@@ -30,6 +31,7 @@ public class Index {
     /**
      * Initialization
      */
+    @SuppressWarnings("unchecked")
     public Index() {
         tika = new Tika();
         segmenter = new JiebaSegmenter();
@@ -47,7 +49,7 @@ public class Index {
                 FileInputStream fileInputStream = new FileInputStream(fileModifiedPath);
                 byte[] content = new byte[fileInputStream.available()];
                 int read = fileInputStream.read(content);
-                fileModifiedMap = (HashMap<String, Long>) deserialize(content);
+                fileModifiedMap = (HashMap<String, HashMap<String, Long>>) deserialize(content);
             }
 
             File indexNames = new File(indexNamesPath);
@@ -68,7 +70,7 @@ public class Index {
      * @param file assigned path
      */
     void createIndex(File file) throws Exception {
-        if(!file.exists())
+        if (!file.exists())
             throw new Exception("File does not exist");
         skipPaths = new ArrayList<>();
         targetIndex = file.getPath();
@@ -76,19 +78,16 @@ public class Index {
         File indexFile = hasIndex(file.getPath());
         if (indexFile != null) {
             wordFilesMap = loadIndex(indexFile);
-            updateIndexes(new ArrayList<>(Collections.singletonList(curIndex)));
-            writeMapToFile(getIndexFileName(curIndex), curIndex);
-            return;
+            updateIndexes(new ArrayList<>(Collections.singletonList(curIndex)), true);
+        } else {
+            if (file.isDirectory())
+                skipPaths = loadExistingIndexToParent(file.getPath());
+            curIndex = file.getPath();
+            if (!fileModifiedMap.containsKey(curIndex))
+                fileModifiedMap.put(curIndex, new HashMap<>());
+            createIndexes(Collections.singletonList(file).toArray(new File[0]));
+            writeMapToFile(file.getPath());
         }
-
-        if (file.isDirectory())
-            skipPaths = loadExistingIndexToParent(indexFileNameMap.values().toArray(new String[0]), file.getPath());
-        updateIndexes(skipPaths);
-
-        ArrayList<File> files = new ArrayList<>(Collections.singletonList(file));
-        createIndexes(files.toArray(new File[0]));
-        curIndex = file.getPath();
-        writeMapToFile(getIndexFileName(file.getPath()), file.getPath());
     }
 
     /**
@@ -135,9 +134,10 @@ public class Index {
 
     /**
      * update indexes of the files within the paths
+     *
      * @param paths target paths
      */
-    private void updateIndexes(ArrayList<String> paths) {
+    private void updateIndexes(ArrayList<String> paths, boolean writeTag) {
         for (String filePath : paths) {
             File file = new File(filePath);
             if (file.isDirectory()) {
@@ -147,22 +147,40 @@ public class Index {
                 for (File child : children) {
                     fileNames.add(child.getPath());
                 }
-                updateIndexes(fileNames);
-            } else if (fileModifiedMap.get(filePath) != file.lastModified()) {
+                updateIndexes(fileNames, false);
+            } else if (!file.exists()) {
+                // file has been deleted
+                for (Map.Entry<String, HashMap<String, Integer>> fileCntMap : wordFilesMap.entrySet()) {
+                    fileCntMap.getValue().remove(filePath);
+                }
+            } else if (fileModifiedMap.get(curIndex).containsKey(filePath) &&
+                    fileModifiedMap.get(curIndex).get(filePath) != file.lastModified()) {
+                // file has been modified
                 for (Map.Entry<String, HashMap<String, Integer>> fileCntMap : wordFilesMap.entrySet()) {
                     fileCntMap.getValue().remove(filePath);
                 }
                 indexingFile(file);
-                fileModifiedMap.put(filePath, file.lastModified());
+                fileModifiedMap.get(curIndex).put(filePath, file.lastModified());
+            } else if (!fileModifiedMap.get(curIndex).containsKey(filePath)) {
+                // file is newly created
+                indexingFile(file);
+                fileModifiedMap.get(curIndex).put(filePath, file.lastModified());
             }
+        }
+
+        if (writeTag) {
+            for (String path : paths)
+                writeMapToFile(path);
         }
     }
 
     /**
      * load existing target index
+     *
      * @param file target index
      * @return loaded index
      */
+    @SuppressWarnings("unchecked")
     private HashMap<String, HashMap<String, Integer>> loadIndex(File file) {
         // load the indexes into memory as hash map
         try {
@@ -183,6 +201,7 @@ public class Index {
 
     /**
      * forming an index file name from a path
+     *
      * @param path file path
      * @return formed index file name
      */
@@ -192,14 +211,13 @@ public class Index {
 
     /**
      * when indexing a folder, load existing child folders/files' indexes to avoid redundant indexing
-     * @param indexes existing indexes
+     *
      * @param parentPath parent folder
      * @return all children that have been loaded
      */
-    private ArrayList<String> loadExistingIndexToParent(String[] indexes, String parentPath) {
+    private ArrayList<String> loadExistingIndexToParent(String parentPath) {
+        Collection<String> indexes = indexFileNameMap.values();
         ArrayList<String> paths = new ArrayList<>();
-        if (indexes == null)
-            return paths;
         for (String indexPath : indexes) {
             File index = new File(indexPath);
             File indexFile = new File(getIndexFileName(indexPath));
@@ -219,12 +237,15 @@ public class Index {
                             if (!oldFileCntMap.containsKey(fileCount.getKey())) {
                                 oldFileCntMap.put(fileCount.getKey(), fileCount.getValue());
                             } else {
-                                oldFileCntMap.put(fileCount.getKey(), oldFileCntMap.get(fileCount.getKey()) + fileCount.getValue());
+                                oldFileCntMap.put(fileCount.getKey(), oldFileCntMap.get(fileCount.getKey())
+                                        + fileCount.getValue());
                             }
                         }
                     }
                 }
 
+                curIndex = indexPath;
+                updateIndexes(new ArrayList<>(Collections.singleton(indexPath)), false);
                 String indexName = indexFile.getPath();
                 boolean result = indexFile.delete();
                 if (result)
@@ -252,7 +273,7 @@ public class Index {
                 createIndexes(file.listFiles());
             } else {
                 System.out.println("Indexing " + file.getPath());
-                fileModifiedMap.put(file.getPath(), file.lastModified());
+                fileModifiedMap.get(curIndex).put(file.getPath(), file.lastModified());
                 indexingFile(file);
             }
         }
@@ -260,6 +281,7 @@ public class Index {
 
     /**
      * whether parent folders have been indexed
+     *
      * @param path current index
      * @return parent folders that have been indexed, null if no such folder exists
      */
@@ -281,8 +303,9 @@ public class Index {
     /**
      * serialize the hash maps (i.e., indexes) to files
      */
-    private void writeMapToFile(String path, String origin) {
+    private void writeMapToFile(String origin) {
         try {
+            String path = getIndexFileName(origin);
             FileOutputStream fileOutputStream = new FileOutputStream(path);
             fileOutputStream.write(serialize(wordFilesMap));
             fileOutputStream.close();
@@ -365,7 +388,33 @@ public class Index {
         return object;
     }
 
-    void fileListener() {
-        //TODO
+    private void fileListener(String filePath) throws IOException, InterruptedException {
+        File file = new File(filePath);
+        if (!file.isDirectory())
+            filePath = file.getParent();
+        WatchService watchService = FileSystems.getDefault().newWatchService();
+        Paths.get(filePath).register(watchService, StandardWatchEventKinds.ENTRY_MODIFY,
+                StandardWatchEventKinds.ENTRY_CREATE,
+                StandardWatchEventKinds.ENTRY_DELETE);
+
+        while (true) {
+            WatchKey key = watchService.take();
+            List<WatchEvent<?>> watchEvents = key.pollEvents();
+            for (WatchEvent<?> event : watchEvents) {
+                Path eventFile = (Path) event.context();
+                String eventFileName = eventFile.toFile().getPath();
+                if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
+                    createIndexes(Collections.singletonList(eventFile.toFile()).toArray(new File[0]));
+                }
+                if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
+                    //updateIndexes(new ArrayList<>(Collections.singletonList(filePath)));
+                }
+                if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
+                    //updateIndexes(new ArrayList<>(Collections.singletonList(filePath)));
+                    break;
+                }
+            }
+            key.reset();
+        }
     }
 }

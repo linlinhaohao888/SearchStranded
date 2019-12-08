@@ -1,11 +1,10 @@
 import com.huaban.analysis.jieba.JiebaSegmenter;
 import org.apache.commons.io.FileUtils;
-import org.checkerframework.checker.units.qual.A;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.*;
 import java.util.*;
 
 class IndexTest {
@@ -31,7 +30,7 @@ class IndexTest {
     void indexTest() {
         Index index = new Index();
         try {
-            index.createIndex(new File("C:\\Users\\linli\\Downloads\\test\\声音定位基础"));
+            index.createIndex(new File("C:\\Users\\MasterYoda117\\Downloads\\test"));
         } catch (Exception e) {
             System.out.println(e.getMessage());
             return;
@@ -64,5 +63,38 @@ class IndexTest {
         if (new File("./res/hi").exists()) {
             System.out.println("Exists");
         }
+    }
+
+    @Test
+    void fileListenerTest() throws IOException, InterruptedException {
+        String filePath = "C:\\";
+        WatchService watchService = FileSystems.getDefault().newWatchService();
+        Paths.get(filePath).register(watchService, StandardWatchEventKinds.ENTRY_MODIFY,
+                StandardWatchEventKinds.ENTRY_CREATE,
+                StandardWatchEventKinds.ENTRY_DELETE);
+
+        while(true){
+            WatchKey key = watchService.take();
+            List<WatchEvent<?>> watchEvents = key.pollEvents();
+            for (WatchEvent<?> event : watchEvents) {
+                Path fileName = (Path) event.context();
+                System.out.println(fileName.toFile().getPath());
+                if(StandardWatchEventKinds.ENTRY_MODIFY == event.kind() ||
+                        StandardWatchEventKinds.ENTRY_DELETE == event.kind()){
+                    System.out.println("Hi");
+                }
+            }
+            key.reset();
+        }
+    }
+
+    @Test
+    void mapTest() {
+        HashMap<String, HashMap<String, String>> test = new HashMap<>();
+        HashMap<String, String> entry = new HashMap<>();
+        entry.put("b", "c");
+        test.put("a", entry);
+        test.get("a").put("b", "d");
+        System.out.println(test);
     }
 }
