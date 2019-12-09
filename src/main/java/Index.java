@@ -23,7 +23,9 @@ public class Index {
 
     // hash map of word -> (file path -> occurrences in the file)
     HashMap<String, HashMap<String, Integer>> wordFilesMap;
+    // hash map of indexed file path -> (contained file path -> last modified timestamp)
     HashMap<String, HashMap<String, Long>> fileModifiedMap;
+    // hash map of md5 indexed file path -> indexed file path
     HashMap<String, String> indexFileNameMap;
     String curIndex;
     String targetIndex;
@@ -80,11 +82,11 @@ public class Index {
             wordFilesMap = loadIndex(indexFile);
             updateIndexes(new ArrayList<>(Collections.singletonList(curIndex)), true);
         } else {
-            if (file.isDirectory())
-                skipPaths = loadExistingIndexToParent(file.getPath());
             curIndex = file.getPath();
             if (!fileModifiedMap.containsKey(curIndex))
                 fileModifiedMap.put(curIndex, new HashMap<>());
+            if (file.isDirectory())
+                skipPaths = loadExistingIndexToParent(file.getPath());
             createIndexes(Collections.singletonList(file).toArray(new File[0]));
             writeMapToFile(file.getPath());
         }
@@ -221,6 +223,7 @@ public class Index {
         for (String indexPath : indexes) {
             File index = new File(indexPath);
             File indexFile = new File(getIndexFileName(indexPath));
+
             if (indexPath.startsWith(parentPath)) {
                 paths.add(index.getPath());
                 HashMap<String, HashMap<String, Integer>> wordIndex = loadIndex(indexFile);
@@ -244,12 +247,17 @@ public class Index {
                     }
                 }
 
+                String oldIndex = curIndex;
                 curIndex = indexPath;
                 updateIndexes(new ArrayList<>(Collections.singleton(indexPath)), false);
+                curIndex = oldIndex;
                 String indexName = indexFile.getPath();
                 boolean result = indexFile.delete();
-                if (result)
+                if (result) {
+                    fileModifiedMap.get(parentPath).putAll(fileModifiedMap.get(indexPath));
+                    fileModifiedMap.remove(indexPath);
                     indexFileNameMap.remove(indexName);
+                }
             }
         }
 
@@ -269,10 +277,8 @@ public class Index {
             if (skipPaths.contains(file.getPath()))
                 continue;
             if (file.isDirectory()) {
-                System.out.println("Indexing " + file.getPath());
                 createIndexes(file.listFiles());
             } else {
-                System.out.println("Indexing " + file.getPath());
                 fileModifiedMap.get(curIndex).put(file.getPath(), file.lastModified());
                 indexingFile(file);
             }
@@ -329,6 +335,7 @@ public class Index {
      * @param file the file to be indexed
      */
     private void indexingFile(File file) {
+        System.out.println("Indexing " + file.getPath());
         String filePath = file.getPath();
 
         try {
@@ -407,10 +414,10 @@ public class Index {
                     createIndexes(Collections.singletonList(eventFile.toFile()).toArray(new File[0]));
                 }
                 if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
-                    //updateIndexes(new ArrayList<>(Collections.singletonList(filePath)));
+                    updateIndexes(new ArrayList<>(Collections.singletonList(filePath)), true);
                 }
                 if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
-                    //updateIndexes(new ArrayList<>(Collections.singletonList(filePath)));
+                    updateIndexes(new ArrayList<>(Collections.singletonList(filePath)), true);
                     break;
                 }
             }
