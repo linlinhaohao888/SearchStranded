@@ -20,4 +20,11 @@ class Result {
         this.contents = contents;
     }
 
+    public String getFilename() {
+        return filename;
+    }
+
+    public String getContent() {
+        return String.join("\n", contents);
+    }
 }

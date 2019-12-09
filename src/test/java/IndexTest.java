@@ -30,15 +30,19 @@ class IndexTest {
     void indexTest() {
         Index index = new Index();
         try {
-            index.createIndex(new File("C:\\Users\\MasterYoda117\\Downloads\\test"));
+            index.createIndex(new File("C:\\Users\\linli\\Downloads\\test"));
+            while (true) {
+                InputStreamReader is = new InputStreamReader(System.in);
+                BufferedReader br = new BufferedReader(is);
+                String word = br.readLine();
+                if (word.equals("exit"))
+                    break;
+                ArrayList<String> paths = index.getFileRange(new ArrayList<>(Collections.singleton(word)));
+                System.out.println(paths);
+            }
         } catch (Exception e) {
             System.out.println(e.getMessage());
-            return;
         }
-        ArrayList<String> words = new ArrayList<>(Arrays.asList("封杀", "算法", "practical"));
-
-        ArrayList<String> paths = index.getFileRange(words);
-        System.out.println(paths);
     }
 
     @Test
@@ -67,25 +71,23 @@ class IndexTest {
 
     @Test
     void fileListenerTest() throws IOException, InterruptedException {
-        String filePath = "C:\\";
+        String filePath = "C:\\Users\\linli\\Downloads";
         WatchService watchService = FileSystems.getDefault().newWatchService();
         Paths.get(filePath).register(watchService, StandardWatchEventKinds.ENTRY_MODIFY,
                 StandardWatchEventKinds.ENTRY_CREATE,
                 StandardWatchEventKinds.ENTRY_DELETE);
 
-        while(true){
-            WatchKey key = watchService.take();
-            List<WatchEvent<?>> watchEvents = key.pollEvents();
-            for (WatchEvent<?> event : watchEvents) {
-                Path fileName = (Path) event.context();
-                System.out.println(fileName.toFile().getPath());
-                if(StandardWatchEventKinds.ENTRY_MODIFY == event.kind() ||
-                        StandardWatchEventKinds.ENTRY_DELETE == event.kind()){
-                    System.out.println("Hi");
-                }
+        WatchKey key = watchService.take();
+        List<WatchEvent<?>> watchEvents = key.pollEvents();
+        for (WatchEvent<?> event : watchEvents) {
+            Path fileName = (Path) event.context();
+            System.out.println(fileName.toFile().getPath());
+            if(StandardWatchEventKinds.ENTRY_MODIFY == event.kind() ||
+                    StandardWatchEventKinds.ENTRY_DELETE == event.kind()){
+                System.out.println("Hi");
             }
-            key.reset();
         }
+        key.reset();
     }
 
     @Test
@@ -96,5 +98,22 @@ class IndexTest {
         test.put("a", entry);
         test.get("a").put("b", "d");
         System.out.println(test);
+    }
+
+    @Test
+    void listenerTest() {
+        Index index = new Index();
+        try {
+            index.createIndex(new File("C:\\Users\\linli\\Downloads\\test"));
+            FileListener fileListener = new FileListener(index, "C:\\Users\\linli\\Downloads\\test");
+            fileListener.start();
+            fileListener.end();
+            fileListener = new FileListener(index, "C:\\Users\\linli\\Downloads\\test");
+            fileListener.start();
+            fileListener.end();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

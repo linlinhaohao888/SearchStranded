@@ -16,19 +16,25 @@ public class Index {
     private final static String fileModifiedPath = "./res/fileModified";
     private final static String indexNamesPath = "./res/indexNames";
 
-    List<String> stopWords;
-    JiebaSegmenter segmenter;
-    Tika tika;
-    ArrayList<String> skipPaths;
+    private List<String> stopWords;
+    private JiebaSegmenter segmenter;
+    private Tika tika;
+    private ArrayList<String> skipPaths;
+    private FileListener fileListener;
 
     // hash map of word -> (file path -> occurrences in the file)
-    HashMap<String, HashMap<String, Integer>> wordFilesMap;
+    private HashMap<String, HashMap<String, Integer>> wordFilesMap;
     // hash map of indexed file path -> (contained file path -> last modified timestamp)
-    HashMap<String, HashMap<String, Long>> fileModifiedMap;
+    private HashMap<String, HashMap<String, Long>> fileModifiedMap;
     // hash map of md5 indexed file path -> indexed file path
-    HashMap<String, String> indexFileNameMap;
-    String curIndex;
-    String targetIndex;
+    private HashMap<String, String> indexFileNameMap;
+
+    public String getCurIndex() {
+        return curIndex;
+    }
+
+    private String curIndex;
+    private String targetIndex;
 
     /**
      * Initialization
@@ -90,6 +96,11 @@ public class Index {
             createIndexes(Collections.singletonList(file).toArray(new File[0]));
             writeMapToFile(file.getPath());
         }
+
+        if (fileListener != null)
+            fileListener.end();
+        fileListener = new FileListener(this, curIndex);
+        fileListener.start();
     }
 
     /**
@@ -139,7 +150,7 @@ public class Index {
      *
      * @param paths target paths
      */
-    private void updateIndexes(ArrayList<String> paths, boolean writeTag) {
+    void updateIndexes(ArrayList<String> paths, boolean writeTag) {
         for (String filePath : paths) {
             File file = new File(filePath);
             if (file.isDirectory()) {
@@ -269,7 +280,7 @@ public class Index {
      *
      * @param files assigned paths
      */
-    private void createIndexes(File[] files) {
+    void createIndexes(File[] files) {
         // traverse the root path
         if (files == null)
             return;
@@ -309,7 +320,7 @@ public class Index {
     /**
      * serialize the hash maps (i.e., indexes) to files
      */
-    private void writeMapToFile(String origin) {
+    void writeMapToFile(String origin) {
         try {
             String path = getIndexFileName(origin);
             FileOutputStream fileOutputStream = new FileOutputStream(path);
