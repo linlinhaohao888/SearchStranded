@@ -1,13 +1,12 @@
+import com.huaban.analysis.jieba.JiebaSegmenter;
+import org.apache.commons.io.FileUtils;
+import org.apache.tika.Tika;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.huaban.analysis.jieba.JiebaSegmenter;
-import com.huaban.analysis.jieba.SegToken;
-import org.apache.commons.io.FileUtils;
-import org.apache.tika.Tika;
 
 
 public class Engine {
@@ -41,7 +40,6 @@ public class Engine {
      */
 
     public ArrayList<Result> search(String query) {
-        //TODO
         ArrayList<String> queryWords = (ArrayList<String>) segmenter.sentenceProcess(query);
         queryWords.removeAll(stopWords);
         ArrayList<String> filePaths = index.getFileRange(queryWords);
