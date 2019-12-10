@@ -13,8 +13,8 @@ public class GUI extends JFrame {
     private JLabel label = new JLabel("Please select a file for search first");
     private JTable table = new JTable();
     private JButton button = new JButton("Search");
+    private JMenu menu = new JMenu("File");
     private Engine engine = new Engine();
-    private PipedInputStream pipedIS = new PipedInputStream();
 
     public static void main(String[] args) {
         GUI gui = new GUI();
@@ -24,6 +24,7 @@ public class GUI extends JFrame {
     private GUI() {
         super();
         initUI();
+        System.setOut(new PrintRedirectStream(System.out, label));
     }
 
     private void initUI() {
@@ -50,7 +51,6 @@ public class GUI extends JFrame {
 
         JMenuBar menuBar = new JMenuBar();
         setJMenuBar(menuBar);
-        JMenu menu = new JMenu("File");
         menuBar.add(menu);
         JMenuItem menuItem = new JMenuItem("Open");
         menuItem.addActionListener(e -> {
@@ -58,28 +58,14 @@ public class GUI extends JFrame {
             fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
             if (fileChooser.showOpenDialog(getContentPane()) == JFileChooser.APPROVE_OPTION) {
                 file = fileChooser.getSelectedFile();
-                label.setText("Indexing " + file.getPath());
-                menu.setEnabled(false);
-                textArea.setEnabled(false);
-                button.setEnabled(false);
-
-                Thread thread = new Thread(() -> {
-                    engine.setCurrentPath(file.getPath());
-                    textArea.setEnabled(true);
-                    button.setEnabled(true);
-                    menu.setEnabled(true);
-                    label.setText("Current path: " + file.getPath());
-                });
-                thread.setDaemon(true);
-                thread.start();
+                onFileSelected();
             }
         });
         menu.add(menuItem);
 
         button.addActionListener(e -> {
             String sentence = textArea.getText();
-            ArrayList<Result> results = engine.search(sentence);
-            onAcquireResults(results);
+            onSentenceEntered(sentence);
         });
         button.setMnemonic(KeyEvent.VK_ENTER);
 
@@ -90,18 +76,64 @@ public class GUI extends JFrame {
         setVisible(true);
     }
 
-    private void onAcquireResults(ArrayList<Result> results) {
-        Object[][] blankData = {};
-        ((DefaultTableModel) table.getModel()).setDataVector(blankData, blankData);
-        String[] columnNames = new String[]{"Path", "Content"};
-        String[][] data = new String[results.size()][2];
-        for(int i = 0; i < results.size(); i++) {
-            data[i][0] = results.get(i).getFilename();
-            data[i][1] = results.get(i).getContent();
+    private void onFileSelected() {
+        label.setText("Indexing " + file.getPath());
+        menu.setEnabled(false);
+        textArea.setEnabled(false);
+        button.setEnabled(false);
+
+        Thread thread = new Thread(() -> {
+            engine.setCurrentPath(file.getPath());
+            textArea.setEnabled(true);
+            button.setEnabled(true);
+            menu.setEnabled(true);
+            label.setText("Current path: " + file.getPath());
+        });
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void onSentenceEntered(String sentence) {
+        label.setText("Searching " + sentence);
+        menu.setEnabled(false);
+        button.setEnabled(false);
+        textArea.setEnabled(false);
+
+        Thread thread = new Thread(() -> {
+            ArrayList<Result> results = engine.search(sentence);
+            Object[][] blankData = {};
+            ((DefaultTableModel) table.getModel()).setDataVector(blankData, blankData);
+            String[] columnNames = new String[]{"Path", "Content"};
+            String[][] data = new String[results.size()][2];
+            for(int i = 0; i < results.size(); i++) {
+                data[i][0] = results.get(i).getFilename();
+                data[i][1] = results.get(i).getContent();
+            }
+
+            DefaultTableModel tableModel = (DefaultTableModel) table.getModel();
+            tableModel.setDataVector(data, columnNames);
+            table.setModel(tableModel);
+
+            textArea.setEnabled(true);
+            button.setEnabled(true);
+            menu.setEnabled(true);
+            label.setText("Current path: " + file.getPath());
+        });
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    class PrintRedirectStream extends PrintStream {
+        private JLabel label;
+
+        public PrintRedirectStream(OutputStream out, JLabel label) {
+            super(out);
+            this.label = label;
         }
 
-        DefaultTableModel tableModel = (DefaultTableModel) table.getModel();
-        tableModel.setDataVector(data, columnNames);
-        table.setModel(tableModel);
+        @Override
+        public void println(String x) {
+            label.setText(x);
+        }
     }
 }
