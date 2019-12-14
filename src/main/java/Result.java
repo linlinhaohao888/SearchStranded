@@ -2,7 +2,7 @@ import java.util.ArrayList;
 
 class Result {
     private String filename;
-//    private ArrayList<String> contents;
+    //    private ArrayList<String> contents;
     String contents;
 
     /**

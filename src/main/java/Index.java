@@ -2,6 +2,7 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.huaban.analysis.jieba.JiebaSegmenter;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -110,10 +111,9 @@ public class Index {
      * @return the collection (range) of files
      */
     ArrayList<String> getFileRange(ArrayList<String> words) {
-        ArrayList<String> result = new ArrayList<>();
+        HashMap<String, Integer> results = new HashMap<>();
         // evaluation of the corresponding file
         // score of a file = sum of the occurrence times of all input words in the file
-        ArrayList<Integer> evaluation = new ArrayList<>();
 
         for (String word : words) {
             word = word.toLowerCase();
@@ -126,23 +126,19 @@ public class Index {
                     if (!filePath.startsWith(targetIndex))
                         continue;
 
-                    if (!result.contains(filePath)) {
-                        result.add(filePath);
-                        evaluation.add(cnt);
+                    if (!results.containsKey(filePath)) {
+                        results.put(filePath, cnt);
                     } else {
-                        int index = result.indexOf(filePath);
-                        evaluation.set(index, evaluation.get(index) + cnt);
+                        results.put(filePath, results.get(filePath) + cnt);
                     }
                 }
             }
         }
 
         // sort result according to evaluation
-        result.sort(Comparator.comparingInt(path -> {
-            int index = result.indexOf(path);
-            return evaluation.get(index);
-        }));
-        return result;
+        Map<String, Integer> sorted = results.entrySet().stream().sorted(Map.Entry.comparingByValue())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+        return new ArrayList<>(sorted.keySet());
     }
 
     /**

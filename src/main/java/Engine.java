@@ -57,19 +57,15 @@ public class Engine {
                     int pos = content.indexOf(lowerVer);
                     if (pos >= 0) {
 
-                        int startPos = pos-1, endPos = pos+word.length();
-                        for(; startPos>0; startPos--)
-                        {
-                            if(punctuations.indexOf(content.charAt(startPos))!=-1)
-                            {
+                        int startPos = pos - 1, endPos = pos + word.length();
+                        for (; startPos > 0; startPos--) {
+                            if (punctuations.indexOf(content.charAt(startPos)) != -1) {
                                 startPos++;
                                 break;
                             }
                         }
-                        for(; endPos<content.length(); endPos++)
-                        {
-                            if(punctuations.indexOf(content.charAt(startPos))!=-1)
-                            {
+                        for (; endPos < content.length(); endPos++) {
+                            if (punctuations.indexOf(content.charAt(startPos)) != -1) {
                                 endPos--;
                                 break;
                             }
@@ -112,47 +108,33 @@ public class Engine {
         }
     }
 
-    static public String mergeParts(ArrayList<String> parts, ArrayList<String> words)
-    {
-        Set<String> non_repeat = new HashSet<>();
-        for(String sentence: parts)
-        {
-            non_repeat.add(sentence);
-        }
-        String res = "<html>";
-        for(String sentence: non_repeat)
-        {
-            res+="...";
+    static public String mergeParts(ArrayList<String> parts, ArrayList<String> words) {
+        Set<String> non_repeat = new HashSet<>(parts);
+        StringBuilder res = new StringBuilder("<html>");
+        for (String sentence : non_repeat) {
+            res.append("...");
             ArrayList<ArrayList<Integer>> pos = new ArrayList<>();
-            for(String w: words)
-            {
+            for (String w : words) {
                 int start_pos = sentence.indexOf(w);
-                if(start_pos!=-1)
-                {
+                if (start_pos != -1) {
                     ArrayList<Integer> division = new ArrayList<>();
                     division.add(start_pos);
-                    division.add(start_pos+w.length());
+                    division.add(start_pos + w.length());
                     pos.add(division);
                 }
             }
-            pos.sort(new Comparator<ArrayList<Integer>>() {
-                @Override
-                public int compare(ArrayList<Integer> o1, ArrayList<Integer> o2) {
-                    return o1.get(0).compareTo(o2.get(0));
-                }
-            });
+            pos.sort(Comparator.comparing(o -> o.get(0)));
             int start = 0, end = sentence.length();
-            String redlined = "";
-            for(ArrayList<Integer> div: pos)
-            {
-                redlined+=sentence.substring(start, div.get(0))+"<font color=\"#FF0000\">"+sentence.substring(div.get(0), div.get(1))+"</font>";
+            StringBuilder redlined = new StringBuilder();
+            for (ArrayList<Integer> div : pos) {
+                redlined.append(sentence, start, div.get(0)).append("<font color=\"#FF0000\">").append(sentence, div.get(0), div.get(1)).append("</font>");
                 start = div.get(1);
             }
-            redlined+=sentence.substring(start, end);
-            res+=redlined;
+            redlined.append(sentence, start, end);
+            res.append(redlined);
         }
-        res+="...</html>";
-        return res;
+        res.append("...</html>");
+        return res.toString();
     }
 
 
