@@ -5,8 +5,7 @@ import org.apache.tika.Tika;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 
 public class Engine {
@@ -17,6 +16,7 @@ public class Engine {
     private List<String> stopWords;
     private Index index;
     private Tika tika;
+    private String punctuations;
 
     /**
      * initialization
@@ -26,6 +26,7 @@ public class Engine {
         segmenter = new JiebaSegmenter();
         index = new Index();
         tika = new Tika();
+        punctuations = "!?,.():;'\"！？，。：；“”‘’《》<>";
         try {
             File file = new File(pathStopWords);
             stopWords = FileUtils.readLines(file, Charset.defaultCharset());
@@ -50,22 +51,46 @@ public class Engine {
             try {
                 String content = tika.parseToString(file);
                 content = content.toLowerCase();
+
                 for (String word : queryWords) {
                     String lowerVer = word.toLowerCase();
                     int pos = content.indexOf(lowerVer);
                     if (pos >= 0) {
-                        String part = "..." + content.substring(Math.max(0, pos - 5), Math.min(content.length(), pos + word.length() + 5)) + "...";
-                        part = part.replace("\n", " ");
+
+                        int startPos = pos-1, endPos = pos+word.length();
+                        for(; startPos>0; startPos--)
+                        {
+                            if(punctuations.indexOf(content.charAt(startPos))!=-1)
+                            {
+                                startPos++;
+                                break;
+                            }
+                        }
+                        for(; endPos<content.length(); endPos++)
+                        {
+                            if(punctuations.indexOf(content.charAt(startPos))!=-1)
+                            {
+                                endPos--;
+                                break;
+                            }
+                        }
+
+//                        String part = "..." + content.substring(Math.max(0, pos - 5), Math.min(content.length(), pos + word.length() + 5)) + "...";
+//                        part = part.replace("\n", " ");
+                        String part = content.substring(startPos, endPos);
                         parts.add(part);
                     }
                 }
-                if (parts.isEmpty()) {
-                    parts.add(content.substring(0, Math.min(content.length(), 10)));
-                }
+//                if (parts.isEmpty())
+//                {
+//                    parts.add(content.substring(0, Math.min(content.length(), 10)));
+//                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            res.add(new Result(path, parts));
+            String toShow = mergeParts(parts, queryWords);
+
+            res.add(new Result(path, toShow));
 
         }
 
@@ -85,6 +110,49 @@ public class Engine {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    static public String mergeParts(ArrayList<String> parts, ArrayList<String> words)
+    {
+        Set<String> non_repeat = new HashSet<>();
+        for(String sentence: parts)
+        {
+            non_repeat.add(sentence);
+        }
+        String res = "<html>";
+        for(String sentence: non_repeat)
+        {
+            res+="...";
+            ArrayList<ArrayList<Integer>> pos = new ArrayList<>();
+            for(String w: words)
+            {
+                int start_pos = sentence.indexOf(w);
+                if(start_pos!=-1)
+                {
+                    ArrayList<Integer> division = new ArrayList<>();
+                    division.add(start_pos);
+                    division.add(start_pos+w.length());
+                    pos.add(division);
+                }
+            }
+            pos.sort(new Comparator<ArrayList<Integer>>() {
+                @Override
+                public int compare(ArrayList<Integer> o1, ArrayList<Integer> o2) {
+                    return o1.get(0).compareTo(o2.get(0));
+                }
+            });
+            int start = 0, end = sentence.length();
+            String redlined = "";
+            for(ArrayList<Integer> div: pos)
+            {
+                redlined+=sentence.substring(start, div.get(0))+"<font color=\"#FF0000\">"+sentence.substring(div.get(0), div.get(1))+"</font>";
+                start = div.get(1);
+            }
+            redlined+=sentence.substring(start, end);
+            res+=redlined;
+        }
+        res+="...</html>";
+        return res;
     }
 
 

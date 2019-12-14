@@ -37,4 +37,25 @@ public class EngineTest {
         ArrayList<Result> res = engine.search("结构");
         int a = 1;
     }
+
+    @Test
+    void charTest()
+    {
+        String content = "a，";
+        content+="...";
+        System.out.print(content);
+    }
+
+    @Test
+    void engineTest()
+    {
+        ArrayList<String> parts = new ArrayList<>();
+        parts.add("abcgh");
+        parts.add("wghsab");
+        ArrayList<String> words = new ArrayList<>();
+        words.add("ab");
+        words.add("gh");
+        Engine tool = new Engine();
+        System.out.print(tool.mergeParts(parts, words));
+    }
 }
