@@ -1,14 +1,13 @@
-import java.io.*;
-import java.nio.charset.Charset;
-import java.nio.file.*;
-import java.util.*;
-import java.util.stream.Collectors;
-
 import com.huaban.analysis.jieba.JiebaSegmenter;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.tika.Tika;
 import org.apache.tika.exception.TikaException;
+
+import java.io.*;
+import java.nio.charset.Charset;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class Index {
     // resource file paths
@@ -400,35 +399,5 @@ public class Index {
         objectInputStream.close();
         byteArrayInputStream.close();
         return object;
-    }
-
-    private void fileListener(String filePath) throws IOException, InterruptedException {
-        File file = new File(filePath);
-        if (!file.isDirectory())
-            filePath = file.getParent();
-        WatchService watchService = FileSystems.getDefault().newWatchService();
-        Paths.get(filePath).register(watchService, StandardWatchEventKinds.ENTRY_MODIFY,
-                StandardWatchEventKinds.ENTRY_CREATE,
-                StandardWatchEventKinds.ENTRY_DELETE);
-
-        while (true) {
-            WatchKey key = watchService.take();
-            List<WatchEvent<?>> watchEvents = key.pollEvents();
-            for (WatchEvent<?> event : watchEvents) {
-                Path eventFile = (Path) event.context();
-                String eventFileName = eventFile.toFile().getPath();
-                if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
-                    createIndexes(Collections.singletonList(eventFile.toFile()).toArray(new File[0]));
-                }
-                if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
-                    updateIndexes(new ArrayList<>(Collections.singletonList(filePath)), true);
-                }
-                if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
-                    updateIndexes(new ArrayList<>(Collections.singletonList(filePath)), true);
-                    break;
-                }
-            }
-            key.reset();
-        }
     }
 }
