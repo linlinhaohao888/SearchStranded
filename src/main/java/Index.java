@@ -349,6 +349,7 @@ public class Index {
             content = content.toLowerCase();
             ArrayList<String> words = (ArrayList<String>) segmenter.sentenceProcess(content);
             words.removeAll(stopWords);
+            words.remove(" ");
             for (String word : words) {
                 if (!wordFilesMap.containsKey(word)) {
                     HashMap<String, Integer> fileCntMap = new HashMap<>();
