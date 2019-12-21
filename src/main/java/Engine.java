@@ -43,6 +43,7 @@ public class Engine {
     public ArrayList<Result> search(String query) {
         ArrayList<String> queryWords = (ArrayList<String>) segmenter.sentenceProcess(query);
         queryWords.removeAll(stopWords);
+        queryWords.removeAll(Collections.singleton(" "));
         ArrayList<String> filePaths = index.getFileRange(queryWords);
         ArrayList<Result> res = new ArrayList<>();
         for (String path : filePaths) {
